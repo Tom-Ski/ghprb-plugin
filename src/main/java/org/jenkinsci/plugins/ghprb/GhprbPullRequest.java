@@ -1,22 +1,12 @@
 package org.jenkinsci.plugins.ghprb;
 
 import com.google.common.base.Joiner;
-
 import org.apache.commons.lang.StringUtils;
-import org.kohsuke.github.GHIssue;
-import org.kohsuke.github.GHIssueComment;
-import org.kohsuke.github.GHPullRequest;
-import org.kohsuke.github.GHPullRequestCommitDetail;
-import org.kohsuke.github.GHUser;
-import org.kohsuke.github.GitUser;
+import org.kohsuke.github.*;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -112,6 +102,22 @@ public class GhprbPullRequest {
      * @param issue
      */
     private void checkSkipBuild(GHIssue issue) {
+        //Check only java files
+        try {
+            for (GHPullRequestCommitDetail commit : getPullRequest().listCommits()) {
+                GHRepository repo = getPullRequest().getRepository();
+                for (GHCommit.File file : repo.getCommit(commit.getSha()).getFiles()) {
+                    if (!file.getFileName().endsWith(".java")) {
+                        logger.log(Level.INFO, "Pull request ignored due to non java files present");
+                        shouldRun = false;
+                        return;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         // check for skip build phrase.
         String pullRequestBody = issue.getBody();
         if (StringUtils.isNotBlank(pullRequestBody)) {
